@@ -1,0 +1,2 @@
+[2m2025-02-10T01:20:36.502101Z[0m [32m INFO[0m [2mconvex_local_backend[0m[2m:[0m Starting with config Config { convex_origin: None, convex_site: None, instance_name: None }
+[2m2025-02-10T01:20:36.504049Z[0m [32m INFO[0m [2msearch::searcher::searcher[0m[2m:[0m Searchlight starting, local_storage_path: /tmp/.tmp3YBhpV max_size: 524.3 MB

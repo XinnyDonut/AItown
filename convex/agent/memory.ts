@@ -33,7 +33,7 @@ export async function rememberConversation(
     playerId,
     conversationId,
   });
-  const { player, otherPlayer } = data;
+  const { player, otherPlayer, agent } = data;
   const messages = await ctx.runQuery(selfInternal.loadMessages, { worldId, conversationId });
   if (!messages.length) {
     return;
@@ -47,6 +47,50 @@ export async function rememberConversation(
       "I," and add if you liked or disliked this interaction.`,
     },
   ];
+
+  //with impression score,, agent identity and plan.
+  //can't do this. player doesn't have properties we need, and memory can't do internal query to get agents.
+  // console.log("Agent check:", { 
+  //   hasAgent: !!agent, 
+  //   agentType: typeof agent,
+  //   agentContent: agent
+  // });
+  // console.log("DEBUG player object:", {
+  //   fullPlayer: player,
+  //   properties: Object.keys(player),
+  //   hasName: !!player.name,
+  //   name: player.name,
+  //   hasIdentity: !!player.identity,
+  //   identity: player.identity,
+  // });
+  
+  // const prompt = [
+  //   `You are ${player.name}.`,
+  // ];
+  // if (agent && typeof agent.identity === 'string') {
+  //   prompt.push(`About you: ${agent.identity}`);
+  //   prompt.push(`Your goals: ${agent.plan}`);
+  // } else {
+  //   console.log("Agent identity check failed:", { agent });
+  // }
+  // // if (otherAgent) {
+  // //   prompt.push(`About ${otherPlayer.name}: ${otherAgent.identity}`);
+  // // }
+  // prompt.push(
+  //   `I would like you to summarize your conversation with ${otherPlayer.name} from your perspective, 
+  //   using first-person pronouns like "I." Make sure your summary reflects your identity and goals. 
+  //   Also include how this interaction affected your impression of them, rating from -100 to 100.
+  //   End your response with the impression score on a new line.`
+  // );
+
+  // const llmMessages: LLMMessage[] = [
+  //   {
+  //     role: 'user',
+  //     content: prompt.join('\n'),
+  //   },
+  // ];
+
+
   const authors = new Set<GameId<'players'>>();
   for (const message of messages) {
     const author = message.author === player.id ? player : otherPlayer;
@@ -92,6 +136,8 @@ export const loadConversation = internalQuery({
     conversationId,
   },
   handler: async (ctx, args) => {
+
+    
     const world = await ctx.db.get(args.worldId);
     if (!world) {
       throw new Error(`World ${args.worldId} not found`);
@@ -147,10 +193,44 @@ export const loadConversation = internalQuery({
     if (!otherPlayerDescription) {
       throw new Error(`Player description for ${otherPlayerId} not found`);
     }
+    // return {
+    //   player: { ...player, name: playerDescription.name },
+    //   conversation,
+    //   otherPlayer: { ...otherPlayer, name: otherPlayerDescription.name },
+    // };
+
+    //modified to use our agents table for better memory prompts with agent personality.
+    const agent = await ctx.db
+      .query('agents')
+      .filter(q => q.eq(q.field('playerId'), args.playerId))
+      .first();
+    
+    const otherAgent = await ctx.db
+      .query('agents')
+      .filter(q => q.eq(q.field('playerId'), otherPlayerId))
+      .first();
+
+      console.log("Database query result:", {
+        playerId: args.playerId,
+        foundAgent: !!agent,
+        agentData: agent
+      });
+
     return {
       player: { ...player, name: playerDescription.name },
       conversation,
       otherPlayer: { ...otherPlayer, name: otherPlayerDescription.name },
+      // use agents table directly
+      agent: agent && {
+        identity: agent.identity,
+        plan: agent.plan,
+        ...agent
+      },
+      otherAgent: otherAgent && {
+        identity: otherAgent.identity,
+        plan: otherAgent.plan,
+        ...otherAgent
+      }
     };
   },
 });
